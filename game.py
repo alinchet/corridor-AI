@@ -6,8 +6,9 @@ class Game:
     def __init__(self):
         self.board_size = 9  # 9x9 board
         self.cell_size = 60
+        self.wall_size = 20  # Size of wall placement buttons
         self.margin = 50
-        self.window_size = self.board_size * self.cell_size + 2 * self.margin
+        self.window_size = self.board_size * self.cell_size + (self.board_size - 1) * self.wall_size + 2 * self.margin
         
         self.screen = pygame.display.set_mode((self.window_size, self.window_size))
         pygame.display.set_caption("Quoridor")
@@ -20,8 +21,6 @@ class Game:
         self.game_over = False
         self.winner = None
         self.remaining_fences = {1: 10, 2: 10}  # Each player starts with 10 fences
-        self.placing_wall = False
-        self.wall_orientation = 'horizontal'  # or 'vertical'
         
         # Colors
         self.WHITE = (255, 255, 255)
@@ -32,6 +31,8 @@ class Game:
         self.LIGHT_BLUE = (200, 200, 255)
         self.LIGHT_RED = (255, 200, 200)
         self.WALL_COLOR = (139, 69, 19)  # Brown
+        self.WALL_BUTTON_COLOR = (200, 200, 200)  # Light gray for wall buttons
+        self.WALL_BUTTON_HOVER = (180, 180, 180)  # Darker gray for hover
         
         # Initialize player positions
         self.positions = {
@@ -41,62 +42,68 @@ class Game:
         self.board[self.positions[1]] = 1
         self.board[self.positions[2]] = 2
 
+    def get_cell_rect(self, i: int, j: int) -> pygame.Rect:
+        x = self.margin + j * (self.cell_size + self.wall_size)
+        y = self.margin + i * (self.cell_size + self.wall_size)
+        return pygame.Rect(x, y, self.cell_size, self.cell_size)
+
+    def get_horizontal_wall_rect(self, i: int, j: int) -> pygame.Rect:
+        x = self.margin + j * (self.cell_size + self.wall_size)
+        y = self.margin + (i + 1) * self.cell_size + i * self.wall_size
+        return pygame.Rect(x, y, self.cell_size * 2 + self.wall_size, self.wall_size)
+
+    def get_vertical_wall_rect(self, i: int, j: int) -> pygame.Rect:
+        x = self.margin + (j + 1) * self.cell_size + j * self.wall_size
+        y = self.margin + i * (self.cell_size + self.wall_size)
+        return pygame.Rect(x, y, self.wall_size, self.cell_size * 2 + self.wall_size)
+
     def draw_board(self):
         self.screen.fill(self.WHITE)
         
         # Draw goal lines
         for j in range(self.board_size):
-            pygame.draw.rect(self.screen, self.LIGHT_RED,
-                           (self.margin + j * self.cell_size, self.margin,
-                            self.cell_size, self.cell_size))
-            pygame.draw.rect(self.screen, self.LIGHT_BLUE,
-                           (self.margin + j * self.cell_size, self.margin + (self.board_size-1) * self.cell_size,
-                            self.cell_size, self.cell_size))
+            rect = self.get_cell_rect(0, j)
+            pygame.draw.rect(self.screen, self.LIGHT_RED, rect)
+            rect = self.get_cell_rect(self.board_size-1, j)
+            pygame.draw.rect(self.screen, self.LIGHT_BLUE, rect)
         
-        # Draw grid
+        # Draw grid and wall buttons
         for i in range(self.board_size):
             for j in range(self.board_size):
-                rect = pygame.Rect(
-                    self.margin + j * self.cell_size,
-                    self.margin + i * self.cell_size,
-                    self.cell_size,
-                    self.cell_size
-                )
-                pygame.draw.rect(self.screen, self.BLACK, rect, 1)
+                # Draw cell
+                cell_rect = self.get_cell_rect(i, j)
+                pygame.draw.rect(self.screen, self.BLACK, cell_rect, 1)
                 
+                # Draw pawn
                 if self.board[i, j] == 1:
                     pygame.draw.circle(
                         self.screen,
                         self.RED,
-                        (self.margin + j * self.cell_size + self.cell_size // 2,
-                         self.margin + i * self.cell_size + self.cell_size // 2),
+                        (cell_rect.centerx, cell_rect.centery),
                         self.cell_size // 3
                     )
                 elif self.board[i, j] == 2:
                     pygame.draw.circle(
                         self.screen,
                         self.BLUE,
-                        (self.margin + j * self.cell_size + self.cell_size // 2,
-                         self.margin + i * self.cell_size + self.cell_size // 2),
+                        (cell_rect.centerx, cell_rect.centery),
                         self.cell_size // 3
                     )
-        
-        # Draw walls
-        for i in range(self.board_size-1):
-            for j in range(self.board_size):
-                if self.horizontal_walls[i, j]:
-                    pygame.draw.rect(self.screen, self.WALL_COLOR,
-                                   (self.margin + j * self.cell_size,
-                                    self.margin + (i + 1) * self.cell_size - 5,
-                                    self.cell_size * 2, 10))
-        
-        for i in range(self.board_size):
-            for j in range(self.board_size-1):
-                if self.vertical_walls[i, j]:
-                    pygame.draw.rect(self.screen, self.WALL_COLOR,
-                                   (self.margin + (j + 1) * self.cell_size - 5,
-                                    self.margin + i * self.cell_size,
-                                    10, self.cell_size * 2))
+                
+                # Draw wall buttons
+                if i < self.board_size - 1:  # Horizontal wall buttons
+                    wall_rect = self.get_horizontal_wall_rect(i, j)
+                    color = self.WALL_BUTTON_HOVER if wall_rect.collidepoint(pygame.mouse.get_pos()) else self.WALL_BUTTON_COLOR
+                    pygame.draw.rect(self.screen, color, wall_rect)
+                    if self.horizontal_walls[i, j]:
+                        pygame.draw.rect(self.screen, self.WALL_COLOR, wall_rect)
+                
+                if j < self.board_size - 1:  # Vertical wall buttons
+                    wall_rect = self.get_vertical_wall_rect(i, j)
+                    color = self.WALL_BUTTON_HOVER if wall_rect.collidepoint(pygame.mouse.get_pos()) else self.WALL_BUTTON_COLOR
+                    pygame.draw.rect(self.screen, color, wall_rect)
+                    if self.vertical_walls[i, j]:
+                        pygame.draw.rect(self.screen, self.WALL_COLOR, wall_rect)
         
         # Draw remaining fences
         font = pygame.font.Font(None, 36)
@@ -108,6 +115,29 @@ class Game:
         # Draw current player indicator
         current_text = font.render(f"Player {self.current_player}'s turn", True, self.BLACK)
         self.screen.blit(current_text, (self.window_size//2 - 100, 10))
+
+    def get_cell_from_pos(self, pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
+        x, y = pos
+        for i in range(self.board_size):
+            for j in range(self.board_size):
+                if self.get_cell_rect(i, j).collidepoint(x, y):
+                    return (i, j)
+        return None
+
+    def get_wall_from_pos(self, pos: Tuple[int, int]) -> Optional[Tuple[int, int, str]]:
+        x, y = pos
+        # Check horizontal walls
+        for i in range(self.board_size - 1):
+            for j in range(self.board_size):
+                if self.get_horizontal_wall_rect(i, j).collidepoint(x, y):
+                    return (i, j, 'horizontal')
+        
+        # Check vertical walls
+        for i in range(self.board_size):
+            for j in range(self.board_size - 1):
+                if self.get_vertical_wall_rect(i, j).collidepoint(x, y):
+                    return (i, j, 'vertical')
+        return None
 
     def is_valid_move(self, pos: Tuple[int, int]) -> bool:
         i, j = pos
@@ -214,24 +244,19 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         return  # Return to menu
-                    elif event.key == pygame.K_SPACE:
-                        self.placing_wall = not self.placing_wall
-                        if self.placing_wall:
-                            self.wall_orientation = 'horizontal'
-                    elif event.key == pygame.K_r and self.placing_wall:
-                        self.wall_orientation = 'vertical' if self.wall_orientation == 'horizontal' else 'horizontal'
                 
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    x, y = event.pos
-                    i = (y - self.margin) // self.cell_size
-                    j = (x - self.margin) // self.cell_size
+                    # Check for wall placement
+                    wall_pos = self.get_wall_from_pos(event.pos)
+                    if wall_pos:
+                        i, j, orientation = wall_pos
+                        if self.place_wall((i, j), orientation):
+                            continue
                     
-                    if 0 <= i < self.board_size and 0 <= j < self.board_size:
-                        if self.placing_wall:
-                            if self.place_wall((i, j), self.wall_orientation):
-                                self.placing_wall = False
-                        else:
-                            self.make_move((i, j))
+                    # Check for pawn move
+                    cell_pos = self.get_cell_from_pos(event.pos)
+                    if cell_pos:
+                        self.make_move(cell_pos)
             
             self.draw_board()
             pygame.display.flip()
@@ -255,25 +280,21 @@ class Game:
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_ESCAPE:
                             return  # Return to menu
-                        elif event.key == pygame.K_SPACE:
-                            self.placing_wall = not self.placing_wall
-                            if self.placing_wall:
-                                self.wall_orientation = 'horizontal'
-                        elif event.key == pygame.K_r and self.placing_wall:
-                            self.wall_orientation = 'vertical' if self.wall_orientation == 'horizontal' else 'horizontal'
                     
                     if event.type == pygame.MOUSEBUTTONDOWN:
-                        x, y = event.pos
-                        i = (y - self.margin) // self.cell_size
-                        j = (x - self.margin) // self.cell_size
+                        # Check for wall placement
+                        wall_pos = self.get_wall_from_pos(event.pos)
+                        if wall_pos:
+                            i, j, orientation = wall_pos
+                            if self.place_wall((i, j), orientation):
+                                pygame.time.wait(500)  # Small delay before AI move
+                                continue
                         
-                        if 0 <= i < self.board_size and 0 <= j < self.board_size:
-                            if self.placing_wall:
-                                if self.place_wall((i, j), self.wall_orientation):
-                                    self.placing_wall = False
-                            else:
-                                if self.make_move((i, j)):
-                                    pygame.time.wait(500)  # Small delay before AI move
+                        # Check for pawn move
+                        cell_pos = self.get_cell_from_pos(event.pos)
+                        if cell_pos:
+                            if self.make_move(cell_pos):
+                                pygame.time.wait(500)  # Small delay before AI move
             else:  # AI player
                 ai_move = ai_player.get_move(self.board, self.positions, self.horizontal_walls, self.vertical_walls)
                 if ai_move:
