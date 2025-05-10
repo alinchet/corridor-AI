@@ -34,6 +34,9 @@ class Game:
         self.WALL_BUTTON_COLOR = (200, 200, 200)  # Light gray for wall buttons
         self.WALL_BUTTON_HOVER = (180, 180, 180)  # Darker gray for hover
         
+        # Menu button
+        self.menu_button = pygame.Rect(10, self.window_size - 40, 100, 30)
+        
         # Initialize player positions
         self.positions = {
             1: (self.board_size-1, self.board_size//2),  # Player 1 starts at bottom
@@ -115,6 +118,12 @@ class Game:
         # Draw current player indicator
         current_text = font.render(f"Player {self.current_player}'s turn", True, self.BLACK)
         self.screen.blit(current_text, (self.window_size//2 - 100, 10))
+        
+        # Draw menu button
+        pygame.draw.rect(self.screen, self.GRAY, self.menu_button)
+        menu_text = font.render("Menu", True, self.BLACK)
+        text_rect = menu_text.get_rect(center=self.menu_button.center)
+        self.screen.blit(menu_text, text_rect)
 
     def get_cell_from_pos(self, pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
         x, y = pos
@@ -234,29 +243,40 @@ class Game:
         self.current_player = 3 - self.current_player
         return True
 
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return False
+                
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return False  # Return to menu
+                
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # Check menu button
+                if self.menu_button.collidepoint(event.pos):
+                    return False  # Return to menu
+                
+                # Check for wall placement
+                wall_pos = self.get_wall_from_pos(event.pos)
+                if wall_pos:
+                    i, j, orientation = wall_pos
+                    if self.place_wall((i, j), orientation):
+                        return True
+                
+                # Check for pawn move
+                cell_pos = self.get_cell_from_pos(event.pos)
+                if cell_pos:
+                    if self.make_move(cell_pos):
+                        return True
+        
+        return True
+
     def run_pvp(self):
         while not self.game_over:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    return
-                    
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        return  # Return to menu
-                
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    # Check for wall placement
-                    wall_pos = self.get_wall_from_pos(event.pos)
-                    if wall_pos:
-                        i, j, orientation = wall_pos
-                        if self.place_wall((i, j), orientation):
-                            continue
-                    
-                    # Check for pawn move
-                    cell_pos = self.get_cell_from_pos(event.pos)
-                    if cell_pos:
-                        self.make_move(cell_pos)
+            if not self.handle_events():
+                return
             
             self.draw_board()
             pygame.display.flip()
@@ -267,34 +287,24 @@ class Game:
         text_rect = text.get_rect(center=(self.window_size//2, self.window_size//2))
         self.screen.blit(text, text_rect)
         pygame.display.flip()
-        pygame.time.wait(2000)
+        
+        # Wait for click or ESC
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    return
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    return
 
     def run_pve(self, ai_player):
         while not self.game_over:
             if self.current_player == 1:  # Human player
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        pygame.quit()
-                        return
-                        
-                    if event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_ESCAPE:
-                            return  # Return to menu
-                    
-                    if event.type == pygame.MOUSEBUTTONDOWN:
-                        # Check for wall placement
-                        wall_pos = self.get_wall_from_pos(event.pos)
-                        if wall_pos:
-                            i, j, orientation = wall_pos
-                            if self.place_wall((i, j), orientation):
-                                pygame.time.wait(500)  # Small delay before AI move
-                                continue
-                        
-                        # Check for pawn move
-                        cell_pos = self.get_cell_from_pos(event.pos)
-                        if cell_pos:
-                            if self.make_move(cell_pos):
-                                pygame.time.wait(500)  # Small delay before AI move
+                if not self.handle_events():
+                    return
             else:  # AI player
                 ai_move = ai_player.get_move(self.board, self.positions, self.horizontal_walls, self.vertical_walls)
                 if ai_move:
@@ -316,4 +326,15 @@ class Game:
         text_rect = text.get_rect(center=(self.window_size//2, self.window_size//2))
         self.screen.blit(text, text_rect)
         pygame.display.flip()
-        pygame.time.wait(2000) 
+        
+        # Wait for click or ESC
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    return
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    return 
