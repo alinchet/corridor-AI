@@ -245,7 +245,7 @@ class SuperAI(SimpleAI):
         start = position
         goal = (board.shape[0] - 1, position[1])  # Goal is bottom row
         
-        frontier = []
+        frontier = [] # Priority queue for A* algorithm
         heapq.heappush(frontier, (0, start))
         came_from = {start: None}
         cost_so_far = {start: 0}
@@ -285,7 +285,7 @@ class SuperAI(SimpleAI):
                         float: Heuristic value (weighted Manhattan distance)
         '''
         # Manhattan distance to goal with higher weight on vertical distance
-        # For player 2, we want to move downward, so we use (goal[0] - pos[0]) instead of (pos[0] - goal[0])
+
         return (goal[0] - pos[0]) * 2 + abs(pos[1] - goal[1])
 
     def _get_wall_move(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]],
@@ -333,3 +333,22 @@ class SuperAI(SimpleAI):
                 return (opp_i, opp_j-1, 'vertical')
         
         return None 
+
+    def minimax(self, board, positions, horizontal_walls, vertical_walls, depth, is_maximizing):
+        if depth == 0 or self._is_game_over(positions):
+            return self._evaluate_position(board, positions, horizontal_walls, vertical_walls)
+        
+        if is_maximizing:
+            max_eval = float('-inf')
+            for move in self._get_all_possible_moves(board, positions, horizontal_walls, vertical_walls):
+                # Simuler le coup
+                eval = self.minimax(board, positions, horizontal_walls, vertical_walls, depth-1, False)
+                max_eval = max(max_eval, eval)
+            return max_eval
+        else:
+            min_eval = float('inf')
+            for move in self._get_all_possible_moves(board, positions, horizontal_walls, vertical_walls):
+                # Simuler le coup
+                eval = self.minimax(board, positions, horizontal_walls, vertical_walls, depth-1, True)
+                min_eval = min(min_eval, eval)
+            return min_eval 
