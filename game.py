@@ -234,6 +234,50 @@ class Game:
         self.current_player = 3 - self.current_player
         return True
 
+    def draw_menu(self):
+        self.screen.fill(self.WHITE)
+        font = pygame.font.Font(None, 74)
+        title = font.render("Quoridor", True, self.BLACK)
+        title_rect = title.get_rect(center=(self.window_size//2, self.window_size//3))
+        
+        font = pygame.font.Font(None, 48)
+        pvp_text = font.render("Player vs Player", True, self.BLACK)
+        pve_text = font.render("Player vs AI", True, self.BLACK)
+        
+        pvp_rect = pvp_text.get_rect(center=(self.window_size//2, self.window_size//2))
+        pve_rect = pve_text.get_rect(center=(self.window_size//2, self.window_size//2 + 80))
+        
+        # Draw buttons
+        pygame.draw.rect(self.screen, self.LIGHT_BLUE, pvp_rect.inflate(40, 20))
+        pygame.draw.rect(self.screen, self.LIGHT_RED, pve_rect.inflate(40, 20))
+        
+        # Draw text
+        self.screen.blit(title, title_rect)
+        self.screen.blit(pvp_text, pvp_rect)
+        self.screen.blit(pve_text, pve_rect)
+        
+        pygame.display.flip()
+        
+        return pvp_rect, pve_rect
+
+    def run_menu(self):
+        while True:
+            pvp_rect, pve_rect = self.draw_menu()
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                    
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if pvp_rect.collidepoint(event.pos):
+                        return "pvp"
+                    elif pve_rect.collidepoint(event.pos):
+                        return "pve"
+                        
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return None
+
     def run_pvp(self):
         while not self.game_over:
             for event in pygame.event.get():
@@ -316,4 +360,25 @@ class Game:
         text_rect = text.get_rect(center=(self.window_size//2, self.window_size//2))
         self.screen.blit(text, text_rect)
         pygame.display.flip()
-        pygame.time.wait(2000) 
+        pygame.time.wait(2000)
+
+if __name__ == "__main__":
+    pygame.init()
+    game = Game()
+    
+    while True:
+        mode = game.run_menu()
+        if mode is None:
+            break
+            
+        if mode == "pvp":
+            game.run_pvp()
+        else:  # pve
+            # TODO: Implement AI player
+            print("AI mode not implemented yet")
+            continue
+            
+        # Reset game state for new game
+        game = Game()
+    
+    pygame.quit() 
