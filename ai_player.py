@@ -2,13 +2,43 @@ import numpy as np
 from typing import Tuple, List, Optional, Dict
 import heapq
 
+
+
 class SimpleAI:
     def __init__(self, max_depth: int = 3):
+        '''
+        Initialize the SimpleAI player.
+
+                Parameters:
+                        max_depth (int): Maximum depth for move evaluation (default: 3)
+
+                Returns:
+                        None
+        '''
         self.max_depth = max_depth
         self.last_position = None
 
     def get_move(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]], 
                 horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> Optional[Tuple[int, int]]:
+        '''
+        Determine the next move for the AI player.
+
+                Parameters:
+                        board (np.ndarray): The game board
+                        positions (Dict[int, Tuple[int, int]]): Dictionary of player positions. e.g. {2: (0, 4)} is the position of player 2 (AI) at the start of the game.
+                        horizontal_walls (np.ndarray): 2D array representing horizontal walls. 
+                            - Shape: (board_size-1, board_size)
+                            - Values: 0 (no wall), 1 (player 1's wall), 2 (player 2's wall)
+                            - Example: horizontal_walls[i,j] represents the wall between rows i and i+1 at column j
+                        vertical_walls (np.ndarray): 2D array representing vertical walls.
+                            - Shape: (board_size, board_size-1)
+                            - Values: 0 (no wall), 1 (player 1's wall), 2 (player 2's wall)
+                            - Example: vertical_walls[i,j] represents the wall between columns j and j+1 at row i
+
+                Returns:
+                        Optional[Tuple[int, int]]: The chosen move position or None if no valid move
+        '''
+        
         current_pos = positions[2]
         
         # Decide whether to move pawn or place wall
@@ -26,7 +56,7 @@ class SimpleAI:
         if self.last_position:
             valid_moves = [move for move in valid_moves if move[1] != self.last_position]
         
-        # Choose move that gets closer to goal (top row for AI)
+        # Choose move that gets closer to goal (bottom row for AI)
         best_move = None
         best_score = float('inf')
         for move in valid_moves:
@@ -40,6 +70,16 @@ class SimpleAI:
         return best_move
 
     def _get_remaining_fences(self, horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> int:
+        '''
+        Calculate the number of remaining walls for the AI player.
+
+                Parameters:
+                        horizontal_walls (np.ndarray): Array of horizontal walls
+                        vertical_walls (np.ndarray): Array of vertical walls
+
+                Returns:
+                        int: Number of remaining walls (out of 10)
+        '''
         # Count walls placed by AI (player 2)
         horizontal_count = np.sum(horizontal_walls == 2)
         vertical_count = np.sum(vertical_walls == 2)
@@ -48,6 +88,19 @@ class SimpleAI:
     def _get_valid_moves(self, board: np.ndarray, position: Tuple[int, int],
                         horizontal_walls: np.ndarray, vertical_walls: np.ndarray,
                         positions: Dict[int, Tuple[int, int]]) -> List[Tuple[float, Tuple[int, int]]]:
+        '''
+        Get all valid moves from the current position.
+
+                Parameters:
+                        board (np.ndarray): The game board
+                        position (Tuple[int, int]): Current position
+                        horizontal_walls (np.ndarray): Array of horizontal walls
+                        vertical_walls (np.ndarray): Array of vertical walls
+                        positions (Dict[int, Tuple[int, int]]): Dictionary of player positions
+
+                Returns:
+                        List[Tuple[float, Tuple[int, int]]]: List of valid moves with their scores
+        '''
         i, j = position
         valid_moves = []
         
@@ -97,6 +150,18 @@ class SimpleAI:
 
     def _get_wall_move(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]],
                       horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> Optional[Tuple[int, int, str]]:
+        '''
+        Determine the best wall placement move.
+
+                Parameters:
+                        board (np.ndarray): The game board
+                        positions (Dict[int, Tuple[int, int]]): Dictionary of player positions
+                        horizontal_walls (np.ndarray): Array of horizontal walls
+                        vertical_walls (np.ndarray): Array of vertical walls
+
+                Returns:
+                        Optional[Tuple[int, int, str]]: Wall placement coordinates and orientation, or None
+        '''
         # Try to place wall in front of opponent
         opponent_pos = positions[1]
         opp_i, opp_j = opponent_pos
@@ -117,11 +182,32 @@ class SimpleAI:
 
 class SuperAI(SimpleAI):
     def __init__(self, max_depth: int = 4):
+        '''
+        Initialize the SuperAI player.
+
+                Parameters:
+                        max_depth (int): Maximum depth for move evaluation (default: 4)
+
+                Returns:
+                        None
+        '''
         super().__init__(max_depth)
         self.visited = set()
 
     def get_move(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]], 
                 horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> Optional[Tuple[int, int]]:
+        '''
+        Determine the next move for the SuperAI player using A* pathfinding.
+
+                Parameters:
+                        board (np.ndarray): The game board
+                        positions (Dict[int, Tuple[int, int]]): Dictionary of player positions
+                        horizontal_walls (np.ndarray): Array of horizontal walls
+                        vertical_walls (np.ndarray): Array of vertical walls
+
+                Returns:
+                        Optional[Tuple[int, int]]: The chosen move position or None if no valid move
+        '''
         self.visited.clear()
         
         # Use A* to find best path to goal
@@ -143,10 +229,23 @@ class SuperAI(SimpleAI):
     def _find_path_to_goal(self, board: np.ndarray, position: Tuple[int, int],
                           horizontal_walls: np.ndarray, vertical_walls: np.ndarray,
                           positions: Dict[int, Tuple[int, int]]) -> Optional[List[Tuple[int, int]]]:
+        '''
+        Find the optimal path to the goal using A* algorithm.
+
+                Parameters:
+                        board (np.ndarray): The game board
+                        position (Tuple[int, int]): Current position
+                        horizontal_walls (np.ndarray): Array of horizontal walls
+                        vertical_walls (np.ndarray): Array of vertical walls
+                        positions (Dict[int, Tuple[int, int]]): Dictionary of player positions
+
+                Returns:
+                        Optional[List[Tuple[int, int]]]: List of positions forming the path to goal, or None
+        '''
         start = position
-        goal = (0, position[1])  # Goal is top row
+        goal = (board.shape[0] - 1, position[1])  # Goal is bottom row
         
-        frontier = []
+        frontier = [] # Priority queue for A* algorithm
         heapq.heappush(frontier, (0, start))
         came_from = {start: None}
         cost_so_far = {start: 0}
@@ -154,7 +253,7 @@ class SuperAI(SimpleAI):
         while frontier:
             current = heapq.heappop(frontier)[1]
             
-            if current[0] == 0:  # Reached goal
+            if current[0] == board.shape[0] - 1:  # Reached goal (bottom row)
                 path = []
                 while current is not None:
                     path.append(current)
@@ -175,11 +274,34 @@ class SuperAI(SimpleAI):
         return None
 
     def _heuristic(self, pos: Tuple[int, int], goal: Tuple[int, int]) -> float:
+        '''
+        Calculate the heuristic value for A* pathfinding.
+
+                Parameters:
+                        pos (Tuple[int, int]): Current position
+                        goal (Tuple[int, int]): Goal position
+
+                Returns:
+                        float: Heuristic value (weighted Manhattan distance)
+        '''
         # Manhattan distance to goal with higher weight on vertical distance
-        return abs(pos[0] - goal[0]) * 2 + abs(pos[1] - goal[1])
+
+        return (goal[0] - pos[0]) * 2 + abs(pos[1] - goal[1])
 
     def _get_wall_move(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]],
                       horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> Optional[Tuple[int, int, str]]:
+        '''
+        Determine the best wall placement move using opponent path prediction.
+
+                Parameters:
+                        board (np.ndarray): The game board
+                        positions (Dict[int, Tuple[int, int]]): Dictionary of player positions
+                        horizontal_walls (np.ndarray): Array of horizontal walls
+                        vertical_walls (np.ndarray): Array of vertical walls
+
+                Returns:
+                        Optional[Tuple[int, int, str]]: Wall placement coordinates and orientation, or None
+        '''
         # Find opponent's path to goal
         opponent_pos = positions[1]
         opponent_path = self._find_path_to_goal(board, opponent_pos, horizontal_walls, vertical_walls, positions)
@@ -211,3 +333,22 @@ class SuperAI(SimpleAI):
                 return (opp_i, opp_j-1, 'vertical')
         
         return None 
+
+    def minimax(self, board, positions, horizontal_walls, vertical_walls, depth, is_maximizing):
+        if depth == 0 or self._is_game_over(positions):
+            return self._evaluate_position(board, positions, horizontal_walls, vertical_walls)
+        
+        if is_maximizing:
+            max_eval = float('-inf')
+            for move in self._get_all_possible_moves(board, positions, horizontal_walls, vertical_walls):
+                # Simuler le coup
+                eval = self.minimax(board, positions, horizontal_walls, vertical_walls, depth-1, False)
+                max_eval = max(max_eval, eval)
+            return max_eval
+        else:
+            min_eval = float('inf')
+            for move in self._get_all_possible_moves(board, positions, horizontal_walls, vertical_walls):
+                # Simuler le coup
+                eval = self.minimax(board, positions, horizontal_walls, vertical_walls, depth-1, True)
+                min_eval = min(min_eval, eval)
+            return min_eval 

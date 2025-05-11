@@ -202,9 +202,72 @@ class Game:
             if self.vertical_walls[i, j] or self.vertical_walls[i+1, j]:
                 return False
         
-        # Check if wall placement would block all paths to goal
-        # TODO: Implement path checking
-        return True
+        # Temporarily place the wall
+        if orientation == 'horizontal':
+            self.horizontal_walls[i, j] = self.current_player
+            self.horizontal_walls[i, j+1] = self.current_player
+        else:
+            self.vertical_walls[i, j] = self.current_player
+            self.vertical_walls[i+1, j] = self.current_player
+        
+        # Check if both players still have a path to their goal
+        player1_has_path = self._has_path_to_goal(1, self.positions[1], 0)  # Player 1's goal is top row
+        player2_has_path = self._has_path_to_goal(2, self.positions[2], self.board_size-1)  # Player 2's goal is bottom row
+        
+        # Remove the temporary wall
+        if orientation == 'horizontal':
+            self.horizontal_walls[i, j] = 0
+            self.horizontal_walls[i, j+1] = 0
+        else:
+            self.vertical_walls[i, j] = 0
+            self.vertical_walls[i+1, j] = 0
+        
+        return player1_has_path and player2_has_path
+
+    def _has_path_to_goal(self, player: int, start_pos: Tuple[int, int], goal_row: int) -> bool:
+        '''
+        Check if there is a path from the current position to the goal row using BFS.
+
+                Parameters:
+                        player (int): Player number (1 or 2)
+                        start_pos (Tuple[int, int]): Starting position
+                        goal_row (int): Goal row (0 for player 1, board_size-1 for player 2)
+
+                Returns:
+                        bool: True if a path exists, False otherwise
+        '''
+        visited = set()
+        queue = [start_pos]
+        visited.add(start_pos)
+        
+        while queue:
+            current = queue.pop(0)
+            i, j = current
+            
+            if i == goal_row:  # Reached goal row
+                return True
+            
+            # Check all possible moves
+            moves = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # Up, Down, Left, Right
+            for di, dj in moves:
+                ni, nj = i + di, j + dj
+                if (0 <= ni < self.board_size and 
+                    0 <= nj < self.board_size and 
+                    (ni, nj) not in visited):
+                    
+                    # Check if move is valid (no wall blocking)
+                    if di == 0:  # Horizontal move
+                        wall_pos = min(j, nj)
+                        if self.vertical_walls[i, wall_pos] == 0:
+                            queue.append((ni, nj))
+                            visited.add((ni, nj))
+                    else:  # Vertical move
+                        wall_pos = min(i, ni)
+                        if self.horizontal_walls[wall_pos, j] == 0:
+                            queue.append((ni, nj))
+                            visited.add((ni, nj))
+        
+        return False
 
     def make_move(self, pos: Tuple[int, int]) -> bool:
         if not self.is_valid_move(pos):
