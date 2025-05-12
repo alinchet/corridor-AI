@@ -1,7 +1,7 @@
 import pygame
 import sys
 from game import Game
-from ai_player import SimpleAI, SuperAI
+from ai_player import AI
 
 # Initialize Pygame
 pygame.init()
@@ -25,12 +25,11 @@ class Menu:
         button_width = 300
         button_height = 80
         spacing = 20
-        start_y = WINDOW_HEIGHT // 2 - (3 * button_height + 2 * spacing) // 2
+        start_y = WINDOW_HEIGHT // 2 - (2 * button_height + spacing) // 2
         
         self.buttons = {
             'pvp': pygame.Rect(WINDOW_WIDTH//2 - button_width//2, start_y, button_width, button_height),
-            'pve_simple': pygame.Rect(WINDOW_WIDTH//2 - button_width//2, start_y + button_height + spacing, button_width, button_height),
-            'pve_super': pygame.Rect(WINDOW_WIDTH//2 - button_width//2, start_y + 2 * (button_height + spacing), button_width, button_height)
+            'pve': pygame.Rect(WINDOW_WIDTH//2 - button_width//2, start_y + button_height + spacing, button_width, button_height)
         }
 
     def draw_button(self, rect, text, color):
@@ -51,9 +50,8 @@ class Menu:
             self.screen.blit(title, title_rect)
             
             # Draw buttons
-            self.draw_button(self.buttons['pvp'], "Play vs Player", GRAY)
-            self.draw_button(self.buttons['pve_simple'], "Play vs Simple AI", GRAY)
-            self.draw_button(self.buttons['pve_super'], "Play vs Super AI", GRAY)
+            self.draw_button(self.buttons['pvp'], "Player vs Player", GRAY)
+            self.draw_button(self.buttons['pve'], "Player vs AI", GRAY)
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -67,12 +65,9 @@ class Menu:
                             if button_name == 'pvp':
                                 game = Game()
                                 game.run_pvp()
-                            elif button_name == 'pve_simple':
+                            elif button_name == 'pve':
                                 game = Game()
-                                game.run_pve(SimpleAI())
-                            elif button_name == 'pve_super':
-                                game = Game()
-                                game.run_pve(SuperAI())
+                                game.run_pve(AI())  # Using the unified AI class
             
             pygame.display.flip()
 

@@ -33,6 +33,7 @@ class Game:
         self.WALL_COLOR = (139, 69, 19)  # Brown
         self.WALL_BUTTON_COLOR = (200, 200, 200)  # Light gray for wall buttons
         self.WALL_BUTTON_HOVER = (180, 180, 180)  # Darker gray for hover
+        self.PATH_COLOR = (255, 200, 200)  # Light red for AI path
         
         # Menu button
         self.menu_button = pygame.Rect(10, self.window_size - 40, 100, 30)
@@ -44,6 +45,9 @@ class Game:
         }
         self.board[self.positions[1]] = 1
         self.board[self.positions[2]] = 2
+        
+        # AI path
+        self.ai_path = None
 
     def get_cell_rect(self, i: int, j: int) -> pygame.Rect:
         x = self.margin + j * (self.cell_size + self.wall_size)
@@ -60,6 +64,18 @@ class Game:
         y = self.margin + i * (self.cell_size + self.wall_size)
         return pygame.Rect(x, y, self.wall_size, self.cell_size * 2 + self.wall_size)
 
+    def draw_ai_path(self):
+        '''
+        Draw the AI's current path in light red.
+        '''
+        if not self.ai_path:
+            return
+            
+        for pos in self.ai_path:
+            cell_rect = self.get_cell_rect(pos[0], pos[1])
+            pygame.draw.rect(self.screen, self.PATH_COLOR, cell_rect)
+            pygame.draw.rect(self.screen, self.BLACK, cell_rect, 1)  # Draw border
+
     def draw_board(self):
         self.screen.fill(self.WHITE)
         
@@ -69,6 +85,9 @@ class Game:
             pygame.draw.rect(self.screen, self.LIGHT_RED, rect)
             rect = self.get_cell_rect(self.board_size-1, j)
             pygame.draw.rect(self.screen, self.LIGHT_BLUE, rect)
+        
+        # Draw AI path first (so it appears behind pawns)
+        self.draw_ai_path()
         
         # Draw grid and wall buttons
         for i in range(self.board_size):
@@ -369,6 +388,9 @@ class Game:
                 if not self.handle_events():
                     return
             else:  # AI player
+                # Get AI's current path before making a move
+                self.ai_path = ai_player.get_current_path()
+                
                 ai_move = ai_player.get_move(self.board, self.positions, self.horizontal_walls, self.vertical_walls)
                 if ai_move:
                     if isinstance(ai_move, tuple) and len(ai_move) == 3:  # Wall placement
