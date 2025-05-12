@@ -16,6 +16,7 @@ class AI:
         self.max_depth = max_depth
         self.last_position = None
         self.visited = set()
+        self.current_path = None  # Store the current A* path
 
     def get_move(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]], 
                 horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> Optional[Tuple[int, int]]:
@@ -34,7 +35,9 @@ class AI:
         self.visited.clear()
         
         # First try to find a path using A*
-        path = self._find_path_to_goal(board, positions[2], horizontal_walls, vertical_walls, positions)
+        path = self.A_star(board, positions[2], horizontal_walls, vertical_walls, positions)
+        self.current_path = path  # Store the current path
+        
         if path and len(path) > 1:
             next_move = path[1]
             self.last_position = positions[2]
@@ -58,13 +61,24 @@ class AI:
 
         if best_move:
             self.last_position = positions[2]
+            self.current_path = None  # Clear path when using minimax
         return best_move
 
-    def _find_path_to_goal(self, board: np.ndarray, position: Tuple[int, int],
+    def get_current_path(self) -> Optional[List[Tuple[int, int]]]:
+        '''
+        Get the current A* path that the AI is considering.
+
+        Returns:
+            Optional[List[Tuple[int, int]]]: The current path or None if no path is being considered
+        '''
+        return self.current_path
+
+    def A_star(self, board: np.ndarray, position: Tuple[int, int],
                           horizontal_walls: np.ndarray, vertical_walls: np.ndarray,
                           positions: Dict[int, Tuple[int, int]]) -> Optional[List[Tuple[int, int]]]:
         '''
         Find the optimal path to the goal using A* algorithm.
+        The goal is to reach any position in the last row of the board.
 
         Parameters:
             board (np.ndarray): The game board
@@ -77,17 +91,26 @@ class AI:
             Optional[List[Tuple[int, int]]]: List of positions forming the path to goal, or None
         '''
         start = position
-        goal = (board.shape[0] - 1, position[1])  # Goal is bottom row
+        goal_row = board.shape[0] - 1  # Last row is the goal
         
+        # Initialize data structures
         frontier = []
         heapq.heappush(frontier, (0, start))
-        came_from = {start: None}
+        came_from = {start: None}  # Initialize with start position
         cost_so_far = {start: 0}
+        visited = set()  # Keep track of visited positions
         
         while frontier:
             current = heapq.heappop(frontier)[1]
             
-            if current[0] == board.shape[0] - 1:  # Reached goal
+            # Skip if already visited
+            if current in visited:
+                continue
+                
+            visited.add(current)
+            
+            # Check if goal is reached (any position in the last row)
+            if current[0] == goal_row:
                 path = []
                 while current is not None:
                     path.append(current)
@@ -95,30 +118,47 @@ class AI:
                 path.reverse()
                 return path
             
-            for next_pos in self._get_valid_moves(board, current, horizontal_walls, vertical_walls, positions):
-                next_pos = next_pos[1]  # Get actual position from (score, pos) tuple
-                new_cost = cost_so_far[current] + 1
+            # Get valid moves and explore neighbors
+            for next_move in self._get_valid_moves(board, current, horizontal_walls, vertical_walls, positions):
+                next_pos = next_move[1]  # Get actual position from (score, pos) tuple
                 
+                # Skip if already visited
+                if next_pos in visited:
+                    continue
+                
+                # Calculate new cost (base cost + movement cost)
+                # Movement cost is higher for horizontal moves (score from _get_valid_moves)
+                new_cost = cost_so_far[current] + next_move[0]
+                
+                # Update if this path is better
                 if next_pos not in cost_so_far or new_cost < cost_so_far[next_pos]:
                     cost_so_far[next_pos] = new_cost
-                    priority = new_cost + self._heuristic(next_pos, goal)
+                    priority = new_cost + self._heuristic(next_pos, goal_row)
                     heapq.heappush(frontier, (priority, next_pos))
                     came_from[next_pos] = current
         
-        return None
+        return None  # No path found
 
-    def _heuristic(self, pos: Tuple[int, int], goal: Tuple[int, int]) -> float:
+    def _heuristic(self, pos: Tuple[int, int], goal_row: int) -> float:
         '''
         Calculate the heuristic value for A* pathfinding.
+        The heuristic estimates the cost to reach any position in the goal row.
 
         Parameters:
             pos (Tuple[int, int]): Current position
-            goal (Tuple[int, int]): Goal position
+            goal_row (int): The row number of the goal (last row)
 
         Returns:
-            float: Heuristic value (weighted Manhattan distance)
+            float: Heuristic value (weighted distance to goal row)
         '''
-        return (goal[0] - pos[0]) * 2 + abs(pos[1] - goal[1])
+        # Distance to goal row (vertical distance)
+        vertical_distance = goal_row - pos[0]
+        
+        # We don't need to consider horizontal distance since any position in the goal row is valid
+        # But we still add a small penalty for horizontal movement to prefer more direct paths
+        horizontal_penalty = abs(pos[1] - pos[1]) * 0.1  # Small penalty for horizontal movement
+        
+        return vertical_distance * 2 + horizontal_penalty
 
     def _get_valid_moves(self, board: np.ndarray, position: Tuple[int, int],
                         horizontal_walls: np.ndarray, vertical_walls: np.ndarray,
