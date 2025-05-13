@@ -21,48 +21,135 @@ class AI:
     def get_move(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]], 
                 horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> Optional[Tuple[int, int]]:
         '''
-        Determine the next move for the AI player using a combination of A* and minimax.
-
-        Parameters:
-            board (np.ndarray): The game board
-            positions (Dict[int, Tuple[int, int]]): Dictionary of player positions
-            horizontal_walls (np.ndarray): Array of horizontal walls
-            vertical_walls (np.ndarray): Array of vertical walls
-
-        Returns:
-            Optional[Tuple[int, int]]: The chosen move position or None if no valid move
+        Determine the next move using a combination of A* and minimax simultaneously.
+        A* path is used to guide minimax evaluation and improve decision making.
         '''
         self.visited.clear()
         
-        # First try to find a path using A*
+        # Get A* path first
         path = self.A_star(board, positions[2], horizontal_walls, vertical_walls, positions)
-        self.current_path = path  # Store the current path
-        
-        if path and len(path) > 1:
-            next_move = path[1]
-            self.last_position = positions[2]
-            return next_move
-
-        # If no path found, use minimax to evaluate moves
-        best_move = None
-        best_score = float('-inf')
+        self.current_path = path
         
         # Get all possible moves
         possible_moves = self._get_all_possible_moves(board, positions, horizontal_walls, vertical_walls)
+        best_move = None
+        best_score = float('-inf')
         
         for move in possible_moves:
-            # Simulate the move
-            score = self.minimax(board, positions, horizontal_walls, vertical_walls, 
-                               self.max_depth, False)
+            # Create temporary board state
+            temp_board = board.copy()
+            temp_positions = positions.copy()
             
-            if score > best_score:
-                best_score = score
+            # Simulate the move
+            if isinstance(move, tuple) and len(move) == 2:  # Pawn move
+                temp_positions[2] = move
+                
+            # Calculate combined score using both minimax and A* path information
+            minimax_score = self.minimax(temp_board, temp_positions, horizontal_walls, 
+                                    vertical_walls, self.max_depth, False)
+            
+            # Calculate A* path score
+            astar_score = self._calculate_astar_move_score(move, path)
+            
+            # Combine scores with weights
+            combined_score = (0.6 * minimax_score) + (0.4 * astar_score)
+            
+            if combined_score > best_score:
+                best_score = combined_score
                 best_move = move
-
+        
         if best_move:
             self.last_position = positions[2]
-            self.current_path = None  # Clear path when using minimax
+        
         return best_move
+
+    def _calculate_astar_move_score(self, move: Tuple[int, int], path: Optional[List[Tuple[int, int]]]) -> float:
+        '''
+        Calculate a score for a move based on how well it aligns with the A* path.
+        
+        Parameters:
+            move (Tuple[int, int]): The move to evaluate
+            path (Optional[List[Tuple[int, int]]]): The A* path if one exists
+            
+        Returns:
+            float: Score for the move based on A* path alignment
+        '''
+        if not path or not move:
+            return 0.0
+        
+        # If the move is the next step in the A* path
+        if len(path) > 1 and move == path[1]:
+            return 1.0
+        
+        # If the move is in the path but not the next step
+        if move in path:
+            return 0.7
+        
+        # Calculate distance to the path
+        min_distance = float('inf')
+        for path_pos in path:
+            distance = abs(move[0] - path_pos[0]) + abs(move[1] - path_pos[1])
+            min_distance = min(min_distance, distance)
+        
+        # Convert distance to a score (closer to path = higher score)
+        if min_distance == float('inf'):
+            return 0.0
+        return max(0.0, 1.0 - (min_distance * 0.2))
+
+    def _evaluate_position(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]],
+                        horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> float:
+        '''
+        Enhanced position evaluation incorporating both traditional metrics and A* path information.
+        '''
+        # Get current A* path for AI player
+        ai_path = self.A_star(board, positions[2], horizontal_walls, vertical_walls, positions)
+        opponent_path = self.A_star(board, positions[1], horizontal_walls, vertical_walls, positions)
+        
+        # Base position evaluation
+        ai_distance_to_goal = positions[2][0]  # Distance from AI to its goal row
+        opponent_distance_to_goal = board.shape[0] - 1 - positions[1][0]  # Distance from opponent to their goal
+        
+        # Path length evaluation
+        ai_path_length = len(ai_path) if ai_path else board.shape[0] * 2
+        opponent_path_length = len(opponent_path) if opponent_path else board.shape[0] * 2
+        
+        # Wall control evaluation
+        wall_control = self._evaluate_wall_control(horizontal_walls, vertical_walls)
+        
+        # Combine all factors with weights
+        score = (
+            -1.5 * ai_path_length +  # Shorter AI path is better
+            1.0 * opponent_path_length +  # Longer opponent path is better
+            -2.0 * ai_distance_to_goal +  # Closer to goal is better
+            1.0 * opponent_distance_to_goal +  # Opponent further from goal is better
+            0.5 * wall_control  # Wall positioning importance
+        )
+        
+        return score
+
+    def _evaluate_wall_control(self, horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> float:
+        '''
+        Evaluate the strategic value of wall placements.
+        '''
+        score = 0.0
+        
+        # Evaluate horizontal walls
+        for i in range(horizontal_walls.shape[0]):
+            for j in range(horizontal_walls.shape[1]):
+                if horizontal_walls[i, j] == 2:  # AI's wall
+                    # Walls closer to the center are worth more
+                    center_distance = abs(j - horizontal_walls.shape[1]//2)
+                    score += 1.0 / (center_distance + 1)
+        
+        # Evaluate vertical walls
+        for i in range(vertical_walls.shape[0]):
+            for j in range(vertical_walls.shape[1]):
+                if vertical_walls[i, j] == 2:  # AI's wall
+                    # Walls closer to the center are worth more
+                    center_distance = abs(j - vertical_walls.shape[1]//2)
+                    score += 1.0 / (center_distance + 1)
+        
+        return score
 
     def get_current_path(self) -> Optional[List[Tuple[int, int]]]:
         '''
