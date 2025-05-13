@@ -32,6 +32,7 @@ class AI:
         Returns:
             Optional[Tuple[int, int]]: The chosen move position or None if no valid move
         '''
+        
         self.visited.clear()
         
         # First try to find a path using A*
@@ -41,6 +42,7 @@ class AI:
         if path and len(path) > 1:
             next_move = path[1]
             self.last_position = positions[2]
+            print(f"AI path: {path}")
             return next_move
 
         # If no path found, use minimax to evaluate moves
@@ -181,7 +183,7 @@ class AI:
         
         moves = [(-1, 0), (0, 1), (0, -1), (1, 0)]  # Up, Right, Left, Down
         
-        for di, dj in moves:
+        for di, dj in moves: 
             ni, nj = i + di, j + dj
             if (0 <= ni < board.shape[0] and 
                 0 <= nj < board.shape[1] and 
@@ -189,12 +191,12 @@ class AI:
                 if di == 0:  # Horizontal move
                     wall_pos = min(j, nj)
                     if vertical_walls[i, wall_pos] == 0:
-                        score = ni + 5
+                        score = ni
                         valid_moves.append((score, (ni, nj)))
                 else:  # Vertical move
                     wall_pos = min(i, ni)
                     if horizontal_walls[wall_pos, j] == 0:
-                        score = ni if di == -1 else ni + 10
+                        score = ni
                         valid_moves.append((score, (ni, nj)))
         
         # Check jump moves
@@ -211,8 +213,7 @@ class AI:
                 if (0 <= jump_i < board.shape[0] and 
                     0 <= jump_j < board.shape[1] and 
                     board[jump_i, jump_j] == 0):
-                    if jump_i < i:  # Only upward jumps
-                        valid_moves.append((jump_i, (jump_i, jump_j)))
+                    valid_moves.append((jump_i, (jump_i, jump_j)))
         
         return valid_moves
 
