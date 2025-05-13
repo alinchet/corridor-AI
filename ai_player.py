@@ -246,7 +246,7 @@ class AI:
         return moves
 
     def _get_wall_moves(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]],
-                       horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> List[Tuple[int, int]]:
+                       horizontal_walls: np.ndarray, vertical_walls: np.ndarray) -> List[Tuple[int, int, str]]:
         '''
         Get all possible wall placement moves.
 
@@ -257,25 +257,23 @@ class AI:
             vertical_walls (np.ndarray): Array of vertical walls
 
         Returns:
-            List[Tuple[int, int]]: List of possible wall positions
+            List[Tuple[int, int, str]]: List of possible wall positions with their orientation
         '''
         wall_moves = []
-        opponent_pos = positions[1]
-        opp_i, opp_j = opponent_pos
         
         # Check horizontal walls
         for i in range(board.shape[0] - 1):
             for j in range(board.shape[1] - 1):
                 if (horizontal_walls[i, j] == 0 and 
                     horizontal_walls[i, j + 1] == 0):
-                    wall_moves.append((i, j))
+                    wall_moves.append((i, j, 'horizontal'))
         
         # Check vertical walls
         for i in range(board.shape[0] - 1):
             for j in range(board.shape[1] - 1):
                 if (vertical_walls[i, j] == 0 and 
                     vertical_walls[i + 1, j] == 0):
-                    wall_moves.append((i, j))
+                    wall_moves.append((i, j, 'vertical'))
         
         return wall_moves
 
