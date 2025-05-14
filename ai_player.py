@@ -179,7 +179,15 @@ class AI:
                 if (0 <= jump_i < board.shape[0] and 
                     0 <= jump_j < board.shape[1] and 
                     board[jump_i, jump_j] == 0):
-                    valid_moves.append((jump_i, jump_j))
+                    # Vérification du mur pour le saut
+                    if abs(jump_i - opp_i) == 1:  # Saut vertical
+                        if (horizontal_walls[opp_i, jump_j] == 0 and
+                            horizontal_walls[min(i, opp_i), jump_j] == 0):
+                            valid_moves.append((jump_i, jump_j))
+                    else:  # Saut horizontal
+                        if (vertical_walls[jump_i, opp_j] == 0 and
+                            vertical_walls[jump_i, min(j, opp_j)] == 0):
+                            valid_moves.append((jump_i, jump_j))
 
         print(f"Valid move length: {len(valid_moves)}")
         print(f"Valid move : {valid_moves}")
