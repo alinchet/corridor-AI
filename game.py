@@ -173,47 +173,61 @@ class Game:
             return False
         if self.board[i, j] != 0:
             return False
-            
+
         current_i, current_j = self.positions[self.current_player]
-        
-        # Check if move is adjacent and not blocked by a wall
-        if abs(i - current_i) + abs(j - current_j) == 1:
-            # Check for wall between current position and target
-            if i == current_i:  # Horizontal move
-                wall_pos = min(j, current_j)
-                if self.vertical_walls[i, wall_pos]:
-                    return False
-            else:  # Vertical move
-                wall_pos = min(i, current_i)
-                if self.horizontal_walls[wall_pos, j]:
-                    return False
-            return True
-            
-        # Check for jump over opponent
         opponent = 3 - self.current_player
         opp_i, opp_j = self.positions[opponent]
+
+        # 1. Saut direct par-dessus l'adversaire
         if (i, j) == (2 * opp_i - current_i, 2 * opp_j - current_j):
-            # Check if opponent is adjacent
+            # L'adversaire doit être adjacent
             if abs(opp_i - current_i) + abs(opp_j - current_j) == 1:
-                # Check if there's a wall between opponent and destination
-                if abs(i - opp_i) == 1:  # Vertical jump
-                    if self.horizontal_walls[min(i, opp_i), j] != 0:
+                # Vérification du mur entre l'adversaire et la destination du saut
+                if abs(i - opp_i) == 1:  # Saut vertical
+                    if self.horizontal_walls[opp_i, j] != 0 or self.horizontal_walls[min(current_i, opp_i), j] != 0:
                         return False
-                else:  # Horizontal jump
-                    if self.vertical_walls[i, min(j, opp_j)] != 0:
+                else:  # Saut horizontal
+                    if self.vertical_walls[i, opp_j] != 0 or self.vertical_walls[i, min(current_j, opp_j)] != 0:
                         return False
-                
-                # Check if there's a wall behind opponent
-                if (0 <= 2 * opp_i - current_i < self.board_size and 
-                    0 <= 2 * opp_j - current_j < self.board_size):
-                    return True
-                # Check for side jumps
-                if abs(i - current_i) == 1:  # Vertical jump
-                    return (self.vertical_walls[min(i, current_i), j] == 0 and
-                            self.vertical_walls[min(i, current_i), j-1] == 0)
-                else:  # Horizontal jump
-                    return (self.horizontal_walls[i, min(j, current_j)] == 0 and
-                            self.horizontal_walls[i-1, min(j, current_j)] == 0)
+                return True
+
+        # 2. Mouvement adjacent (normal)
+        if abs(i - current_i) + abs(j - current_j) == 1:
+            # Si la case voisine est occupée par l'adversaire, il faut vérifier s'il y a un mur entre eux
+            if (i, j) == (opp_i, opp_j):
+                # Mouvement vers l'adversaire interdit s'il y a un mur entre les deux
+                if abs(i - current_i) == 1:  # Mouvement vertical
+                    if self.horizontal_walls[min(i, current_i), j] != 0:
+                        return False
+                else:  # Mouvement horizontal
+                    if self.vertical_walls[i, min(j, current_j)] != 0:
+                        return False
+                # Si pas de mur, le saut direct sera traité au prochain tour
+                return False  # On ne peut pas juste aller sur la case de l'adversaire
+            # Mouvement normal (pas sur l'adversaire)
+            if i == current_i:  # Mouvement horizontal
+                wall_pos = min(j, current_j)
+                if self.vertical_walls[i, wall_pos] != 0:
+                    return False
+            else:  # Mouvement vertical
+                wall_pos = min(i, current_i)
+                if self.horizontal_walls[wall_pos, j] != 0:
+                    return False
+            return True
+
+        # 3. Side jumps (saut latéral si saut direct bloqué)
+        if abs(current_i - opp_i) + abs(current_j - opp_j) == 1:
+            # Si le saut direct est bloqué par un mur, on autorise le side jump si pas de mur latéral
+            if (abs(i - opp_i) == 1 and abs(j - opp_j) == 1 and (i == current_i or j == current_j)):
+                # Saut latéral vertical
+                if i == opp_i and abs(j - opp_j) == 1:
+                    if self.vertical_walls[i, min(j, opp_j)] == 0:
+                        return True
+                # Saut latéral horizontal
+                if j == opp_j and abs(i - opp_i) == 1:
+                    if self.horizontal_walls[min(i, opp_i), j] == 0:
+                        return True
+
         return False
 
     def is_valid_wall_placement(self, pos: Tuple[int, int], orientation: str) -> bool:

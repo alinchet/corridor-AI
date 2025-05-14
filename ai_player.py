@@ -43,6 +43,7 @@ class AI:
         if path and len(path) > 1:
             next_move = path[1]
             self.last_position = positions[2]
+            print(f"AI path: {path}")
             return next_move
 
         # If no path found, use minimax to evaluate moves
