@@ -195,6 +195,14 @@ class Game:
         if (i, j) == (2 * opp_i - current_i, 2 * opp_j - current_j):
             # Check if opponent is adjacent
             if abs(opp_i - current_i) + abs(opp_j - current_j) == 1:
+                # Check if there's a wall between opponent and destination
+                if abs(i - opp_i) == 1:  # Vertical jump
+                    if self.horizontal_walls[min(i, opp_i), j] != 0:
+                        return False
+                else:  # Horizontal jump
+                    if self.vertical_walls[i, min(j, opp_j)] != 0:
+                        return False
+                
                 # Check if there's a wall behind opponent
                 if (0 <= 2 * opp_i - current_i < self.board_size and 
                     0 <= 2 * opp_j - current_j < self.board_size):
