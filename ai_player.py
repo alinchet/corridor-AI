@@ -15,7 +15,6 @@ class AI:
         '''
         self.max_depth = max_depth
         self.last_position = None
-        self.visited = set()
         self.current_path = None  # Store the current A* path
 
     def get_move(self, board: np.ndarray, positions: Dict[int, Tuple[int, int]], 
@@ -33,24 +32,22 @@ class AI:
             Optional[Tuple[int, int]]: The chosen move position or None if no valid move
         '''
         
-        self.visited.clear()
-        
         # First try to find a path using A*
         path = self.A_star(board, positions[2], horizontal_walls, vertical_walls, positions)
         self.current_path = path  # Store the current path
+        self._evaluate_position(board, positions, horizontal_walls, vertical_walls)
+        # Get all possible moves
+        possible_moves = self._get_all_possible_moves(board, positions, horizontal_walls, vertical_walls)
+        
         
         if path and len(path) > 1:
             next_move = path[1]
             self.last_position = positions[2]
-            print(f"AI path: {path}")
             return next_move
 
         # If no path found, use minimax to evaluate moves
         best_move = None
         best_score = float('-inf')
-        
-        # Get all possible moves
-        possible_moves = self._get_all_possible_moves(board, positions, horizontal_walls, vertical_walls)
         
         for move in possible_moves:
             # Simulate the move
@@ -100,16 +97,9 @@ class AI:
         heapq.heappush(frontier, (0, start))
         came_from = {start: None}  # Initialize with start position
         cost_so_far = {start: 0}
-        visited = set()  # Keep track of visited positions
         
         while frontier:
             current = heapq.heappop(frontier)[1]
-            
-            # Skip if already visited
-            if current in visited:
-                continue
-                
-            visited.add(current)
             
             # Check if goal is reached (any position in the last row)
             if current[0] == goal_row:
@@ -121,16 +111,9 @@ class AI:
                 return path
             
             # Get valid moves and explore neighbors
-            for next_move in self._get_valid_moves(board, current, horizontal_walls, vertical_walls, positions):
-                next_pos = next_move[1]  # Get actual position from (score, pos) tuple
-                
-                # Skip if already visited
-                if next_pos in visited:
-                    continue
-                
+            for next_pos in self._get_pawn_moves(board, current, horizontal_walls, vertical_walls, positions):
                 # Calculate new cost (base cost + movement cost)
-                # Movement cost is higher for horizontal moves (score from _get_valid_moves)
-                new_cost = cost_so_far[current] + next_move[0]
+                new_cost = cost_so_far[current] + 1  # Coût constant pour chaque mouvement
                 
                 # Update if this path is better
                 if next_pos not in cost_so_far or new_cost < cost_so_far[next_pos]:
@@ -153,30 +136,14 @@ class AI:
         Returns:
             float: Heuristic value (weighted distance to goal row)
         '''
-        # Distance to goal row (vertical distance)
-        vertical_distance = goal_row - pos[0]
-        
-        # We don't need to consider horizontal distance since any position in the goal row is valid
-        # But we still add a small penalty for horizontal movement to prefer more direct paths
-        horizontal_penalty = abs(pos[1] - pos[1]) * 0.1  # Small penalty for horizontal movement
-        
-        return vertical_distance * 2 + horizontal_penalty
+        # Distance verticale jusqu'à la ligne d'arrivée
+        return goal_row - pos[0]
 
-    def _get_valid_moves(self, board: np.ndarray, position: Tuple[int, int],
+    def _get_pawn_moves(self, board: np.ndarray, position: Tuple[int, int],
                         horizontal_walls: np.ndarray, vertical_walls: np.ndarray,
-                        positions: Dict[int, Tuple[int, int]]) -> List[Tuple[float, Tuple[int, int]]]:
+                        positions: Dict[int, Tuple[int, int]]) -> List[Tuple[int, int]]:
         '''
         Get all valid moves from the current position.
-
-        Parameters:
-            board (np.ndarray): The game board
-            position (Tuple[int, int]): Current position
-            horizontal_walls (np.ndarray): Array of horizontal walls
-            vertical_walls (np.ndarray): Array of vertical walls
-            positions (Dict[int, Tuple[int, int]]): Dictionary of player positions
-
-        Returns:
-            List[Tuple[float, Tuple[int, int]]]: List of valid moves with their scores
         '''
         i, j = position
         valid_moves = []
@@ -191,13 +158,11 @@ class AI:
                 if di == 0:  # Horizontal move
                     wall_pos = min(j, nj)
                     if vertical_walls[i, wall_pos] == 0:
-                        score = ni
-                        valid_moves.append((score, (ni, nj)))
+                        valid_moves.append((ni, nj))
                 else:  # Vertical move
                     wall_pos = min(i, ni)
                     if horizontal_walls[wall_pos, j] == 0:
-                        score = ni
-                        valid_moves.append((score, (ni, nj)))
+                        valid_moves.append((ni, nj))
         
         # Check jump moves
         opponent_pos = None
@@ -213,7 +178,10 @@ class AI:
                 if (0 <= jump_i < board.shape[0] and 
                     0 <= jump_j < board.shape[1] and 
                     board[jump_i, jump_j] == 0):
-                    valid_moves.append((jump_i, (jump_i, jump_j)))
+                    valid_moves.append((jump_i, jump_j))
+
+        print(f"Valid move length: {len(valid_moves)}")
+        print(f"Valid move : {valid_moves}")
         
         return valid_moves
 
@@ -235,13 +203,15 @@ class AI:
         current_pos = positions[2]
         
         # Get pawn moves
-        pawn_moves = self._get_valid_moves(board, current_pos, horizontal_walls, vertical_walls, positions)
-        moves.extend([move[1] for move in pawn_moves])
+        pawn_moves = self._get_pawn_moves(board, current_pos, horizontal_walls, vertical_walls, positions)
+        moves.extend(pawn_moves)
         
         # Get wall moves
         if self._get_remaining_fences(horizontal_walls, vertical_walls) > 0:
             wall_moves = self._get_wall_moves(board, positions, horizontal_walls, vertical_walls)
             moves.extend(wall_moves)
+
+        print(f"All possible moves length: {len(moves)}")
         
         return moves
 
@@ -335,6 +305,7 @@ class AI:
         
         # Number of remaining walls
         remaining_walls = self._get_remaining_fences(horizontal_walls, vertical_walls)
+        print(f"AI score: {(opponent_distance - ai_distance) * 2 + remaining_walls}")
         
         # Combine factors with weights
         return (opponent_distance - ai_distance) * 2 + remaining_walls
