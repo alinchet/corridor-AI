@@ -195,19 +195,28 @@ class Game:
         if (i, j) == (2 * opp_i - current_i, 2 * opp_j - current_j):
             # Check if opponent is adjacent
             if abs(opp_i - current_i) + abs(opp_j - current_j) == 1:
-                # Check if there's a wall behind opponent
-                if (0 <= 2 * opp_i - current_i < self.board_size and 
-                    0 <= 2 * opp_j - current_j < self.board_size):
-                    return True
-                # Check for side jumps
-                if abs(i - current_i) == 1:  # Vertical jump
-                    return (self.vertical_walls[min(i, current_i), j] == 0 and
-                            self.vertical_walls[min(i, current_i), j-1] == 0)
-                else:  # Horizontal jump
-                    return (self.horizontal_walls[i, min(j, current_j)] == 0 and
-                            self.horizontal_walls[i-1, min(j, current_j)] == 0)
-        return False
-
+                # Check if there's no wall between current position and opponent
+                if opp_i == current_i:  # Horizontal jump
+                    wall_pos = min(opp_j, current_j)
+                    if self.vertical_walls[opp_i, wall_pos]:
+                        return False
+                else:  # Vertical jump
+                    wall_pos = min(opp_i, current_i)
+                    if self.horizontal_walls[wall_pos, opp_j]:
+                        return False
+                        
+                # Check if there's no wall between opponent and target position
+                if i == opp_i:  # Horizontal jump
+                    wall_pos = min(i, opp_j)
+                    if self.vertical_walls[i, wall_pos]:
+                        return False
+                else:  # Vertical jump
+                    wall_pos = min(i, opp_i)
+                    if self.horizontal_walls[wall_pos, j]:
+                        return False
+                        
+                return True
+            
     def is_valid_wall_placement(self, pos: Tuple[int, int], orientation: str) -> bool:
         i, j = pos
         if orientation == 'horizontal':
