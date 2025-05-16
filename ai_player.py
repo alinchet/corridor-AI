@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np 
 import heapq
 from typing import Tuple, List, Dict, Optional, Union
 import copy
@@ -271,17 +271,14 @@ class MinimaxAI:
         if op_path is None:
             return float('inf')   # L'adversaire est bloqué
         
-        # Différence entre les longueurs des chemins (plus court pour l'IA = meilleur)
-        path_diff = len(op_path) - len(ai_path)*1.1
-        
         # Prend en compte le nombre de murs restants
         fence_advantage = remaining_fences[2] - remaining_fences[1]
         
         # Coefficient pour les murs (les murs sont importants mais moins que la distance)
-        fence_weight = 0.1
+        fence_weight = 0.5
         
         # Formule finale : diff_chemins + avantage_murs * poids_murs
-        return path_diff + fence_advantage * fence_weight
+        return fence_advantage * fence_weight - len(ai_path)*3 + len(op_path)
 
     def A_star(
         self, 
@@ -374,40 +371,41 @@ class MinimaxAI:
             if not (0 <= ni < board.shape[0] and 0 <= nj < board.shape[1]):
                 continue
             
-            # Vérifie si la case est vide
-            if board[ni, nj] != 0:
-                # Sauter par-dessus un joueur si possible, qu'il soit adversaire ou de la même équipe
-                if board[ni, nj] != 0:  # Il y a un joueur
-                    # Essaie de sauter par-dessus
-                    ni2, nj2 = ni + di, nj + dj
-                    if (0 <= ni2 < board.shape[0] and 0 <= nj2 < board.shape[1] and 
-                        board[ni2, nj2] == 0):
-                        # Vérifie s'il n'y a pas de mur
-                        can_jump = True
-                        if di != 0:  # Mouvement vertical
-                            w = min(ni, ni2)
-                            if horizontal_walls[w, nj] != 0:
-                                can_jump = False
-                        else:  # Mouvement horizontal
-                            w = min(nj, nj2)
-                            if vertical_walls[ni, w] != 0:
-                                can_jump = False
-                        
-                        if can_jump:
-                            actions.append((ni2, nj2))
-                continue
-            
-            # Vérifie s'il n'y a pas de mur
+            # Vérifie s'il n'y a pas de mur entre la position actuelle et la nouvelle position
+            can_move = True
             if di != 0:  # Mouvement vertical
                 w = min(current_pos[0], ni)
                 if horizontal_walls[w, current_pos[1]] != 0:
-                    continue
+                    can_move = False
             else:  # Mouvement horizontal
                 w = min(current_pos[1], nj)
                 if vertical_walls[current_pos[0], w] != 0:
-                    continue
+                    can_move = False
+            
+            if not can_move:
+                continue
+                
+            # Vérifie si la case est vide
+            if board[ni, nj] == 0:
+                actions.append((ni, nj))
+            else:  # Sauter par-dessus un joueur si possible
+                # Case occupée, essaie de sauter par-dessus
+                ni2, nj2 = ni + di, nj + dj
+                if (0 <= ni2 < board.shape[0] and 0 <= nj2 < board.shape[1] and 
+                    board[ni2, nj2] == 0):
+                    # Vérifie s'il n'y a pas de mur entre le pion et la case d'arrivée
+                    can_jump = True
+                    if di != 0:  # Mouvement vertical
+                        w = min(ni, ni2)
+                        if horizontal_walls[w, nj] != 0:
+                            can_jump = False
+                    else:  # Mouvement horizontal
+                        w = min(nj, nj2)
+                        if vertical_walls[ni, w] != 0:
+                            can_jump = False
                     
-            actions.append((ni, nj))
+                    if can_jump:
+                        actions.append((ni2, nj2))
         
         # Placements de murs
         # Compte le nombre de murs déjà placés
