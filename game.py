@@ -224,11 +224,19 @@ class Game:
                 return False
             if self.horizontal_walls[i, j] or self.horizontal_walls[i, j+1]:
                 return False
+            # Check for crossing vertical walls
+            for k in range(2):  # Check both cells that this wall would occupy
+                if self.vertical_walls[i, j+k] or self.vertical_walls[i+1, j+k]:
+                    return False
         else:  # vertical
             if not (0 <= i < self.board_size-1 and 0 <= j < self.board_size-1):
                 return False
             if self.vertical_walls[i, j] or self.vertical_walls[i+1, j]:
                 return False
+            # Check for crossing horizontal walls
+            for k in range(2):  # Check both cells that this wall would occupy
+                if self.horizontal_walls[i+k, j] or self.horizontal_walls[i+k, j+1]:
+                    return False
         
         # Temporarily place the wall
         if orientation == 'horizontal':
