@@ -428,7 +428,8 @@ class MinimaxAI:
         horizontal_walls: np.ndarray,
         vertical_walls: np.ndarray
     ) -> List[Tuple[float, Tuple[int, int]]]:
-        """Compute a list of valid (adjacent) moves (with a cost) from a given cell (i,j) on the board.
+        """Compute a list of valid moves (with a cost) from a given cell (i,j) on the board.
+        Includes both simple moves and jumps over opponents.
 
         Parameters:
             board (np.ndarray) – A 2D numpy array representing the board (0: empty, 1: player 1, 2: player 2).
@@ -437,19 +438,20 @@ class MinimaxAI:
             vertical_walls (np.ndarray) – A 2D numpy array (board_size, board_size-1) representing vertical walls (0: none, 1: player 1, 2: player 2).
 
         Returns:
-            List[Tuple[float, Tuple[int, int]]] – A list of (cost, (ni,nj)) tuples, where (ni,nj) is a valid adjacent cell (i.e. ni, nj are in bounds, the cell is empty, and no wall blocks the move) and cost (e.g. 1) is the cost (or "weight") of the move.
-
-        Notes:
-            – Iterates over the four adjacent directions (up, down, left, right) and checks (using min(i, ni) or min(j, nj) for wall indices) if a wall blocks the move.
+            List[Tuple[float, Tuple[int, int]]] – A list of (cost, (ni,nj)) tuples for valid moves.
+            Includes both simple moves (cost=1) and jumps over opponents (cost=1).
         """
         i, j = position
         moves: List[Tuple[float, Tuple[int,int]]] = []
+        
         for di, dj in [(-1,0),(1,0),(0,-1),(0,1)]:  # Top, Bottom, Left, Right
             ni, nj = i+di, j+dj
+            
+            # Check if the next cell is within bounds
             if not (0 <= ni < board.shape[0] and 0 <= nj < board.shape[1]):
                 continue
-            if board[ni, nj] != 0:
-                continue
+            
+            # Check if there's a wall blocking the move
             if di != 0:  # Vertical move
                 w = min(i, ni)
                 if horizontal_walls[w, j] != 0:
@@ -458,7 +460,27 @@ class MinimaxAI:
                 w = min(j, nj)
                 if vertical_walls[i, w] != 0:
                     continue
-            moves.append((1, (ni, nj)))
+            
+            # If the next cell is empty, it's a valid simple move
+            if board[ni, nj] == 0:
+                moves.append((1, (ni, nj)))
+                continue
+            
+            # If the next cell is occupied, try to jump over
+            ni2, nj2 = ni + di, nj + dj
+            if (0 <= ni2 < board.shape[0] and 0 <= nj2 < board.shape[1] and 
+                board[ni2, nj2] == 0):
+                # Check if there's a wall blocking the jump
+                if di != 0:  # Vertical move
+                    w = min(ni, ni2)
+                    if horizontal_walls[w, nj] != 0:
+                        continue
+                else:  # Horizontal move
+                    w = min(nj, nj2)
+                    if vertical_walls[ni, w] != 0:
+                        continue
+                moves.append((1, (ni2, nj2)))
+        
         return moves
 
     def _get_all_possible_moves(
