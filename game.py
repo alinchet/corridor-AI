@@ -46,8 +46,7 @@ class Game:
         self.board[self.positions[1]] = 1
         self.board[self.positions[2]] = 2
         
-        # AI path
-        self.ai_path = None
+        
 
     def get_cell_rect(self, i: int, j: int) -> pygame.Rect:
         x = self.margin + j * (self.cell_size + self.wall_size)
@@ -64,17 +63,7 @@ class Game:
         y = self.margin + i * (self.cell_size + self.wall_size)
         return pygame.Rect(x, y, self.wall_size, self.cell_size * 2 + self.wall_size)
 
-    def draw_ai_path(self):
-        '''
-        Draw the AI's current path in light red.
-        '''
-        if not self.ai_path:
-            return
-            
-        for pos in self.ai_path:
-            cell_rect = self.get_cell_rect(pos[0], pos[1])
-            pygame.draw.rect(self.screen, self.PATH_COLOR, cell_rect)
-            pygame.draw.rect(self.screen, self.BLACK, cell_rect, 1)  # Draw border
+    
 
     def draw_board(self):
         self.screen.fill(self.WHITE)
@@ -86,8 +75,6 @@ class Game:
             rect = self.get_cell_rect(self.board_size-1, j)
             pygame.draw.rect(self.screen, self.LIGHT_BLUE, rect)
         
-        # Draw AI path first (so it appears behind pawns)
-        self.draw_ai_path()
         
         # Draw grid and wall buttons
         for i in range(self.board_size):
@@ -156,12 +143,12 @@ class Game:
         x, y = pos
         # Check horizontal walls
         for i in range(self.board_size - 1):
-            for j in range(self.board_size):
+            for j in range(self.board_size - 1):
                 if self.get_horizontal_wall_rect(i, j).collidepoint(x, y):
                     return (i, j, 'horizontal')
         
         # Check vertical walls
-        for i in range(self.board_size):
+        for i in range(self.board_size - 1):
             for j in range(self.board_size - 1):
                 if self.get_vertical_wall_rect(i, j).collidepoint(x, y):
                     return (i, j, 'vertical')
@@ -225,18 +212,17 @@ class Game:
             if self.horizontal_walls[i, j] or self.horizontal_walls[i, j+1]:
                 return False
             # Check for crossing vertical walls
-            for k in range(2):  # Check both cells that this wall would occupy
-                if self.vertical_walls[i, j+k] or self.vertical_walls[i+1, j+k]:
-                    return False
+            if self.vertical_walls[i, j]:
+                return False
         else:  # vertical
             if not (0 <= i < self.board_size-1 and 0 <= j < self.board_size-1):
                 return False
             if self.vertical_walls[i, j] or self.vertical_walls[i+1, j]:
                 return False
             # Check for crossing horizontal walls
-            for k in range(2):  # Check both cells that this wall would occupy
-                if self.horizontal_walls[i+k, j] or self.horizontal_walls[i+k, j+1]:
-                    return False
+            if self.horizontal_walls[i, j]:
+                return False
+            
         
         # Temporarily place the wall
         if orientation == 'horizontal':
@@ -340,6 +326,7 @@ class Game:
             
         self.remaining_fences[self.current_player] -= 1
         self.current_player = 3 - self.current_player
+        
         return True
 
     def handle_events(self):
