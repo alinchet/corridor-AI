@@ -113,7 +113,6 @@ class Menu:
             elif mode == 'pve':
                 # Create a new Minimax AI instance with a timeout
                 minimax_ai = MinimaxAI(max_depth=self.ai_depth, wall_radius=self.ai_radius)
-                # Ajoutez cette ligne pour définir le timeout de l'IA
                 minimax_ai.timeout = self.ai_timeout
                 game = Game()
                 game.run_pve(minimax_ai)
@@ -141,11 +140,10 @@ class Menu:
         radius_plus = pygame.Rect(WINDOW_WIDTH//2 + 50 + button_width + 20, start_y, button_height, button_height)
         
         start_y +=30
-        # Ajoutez ces lignes pour les boutons de timeout
         timeout_minus = pygame.Rect(WINDOW_WIDTH//2 - 150, start_y + 70, button_height, button_height)
         timeout_plus = pygame.Rect(WINDOW_WIDTH//2 - 150 + button_width + 20, start_y + 70, button_height, button_height)
         
-        back_button = pygame.Rect(WINDOW_WIDTH//2 - 100, start_y + 170, 200, button_height)  # Déplacé plus bas
+        back_button = pygame.Rect(WINDOW_WIDTH//2 - 100, start_y + 170, 200, button_height) 
         
         while running:
             self.screen.fill(WHITE)
@@ -163,7 +161,6 @@ class Menu:
             radius_text = self.small_font.render(f"Wall Radius: {self.ai_radius}", True, BLACK)
             self.screen.blit(radius_text, (WINDOW_WIDTH//2 + 50, start_y - 70))
             
-            # Ajoutez ces lignes pour afficher le réglage du temps
             timeout_text = self.small_font.render(f"AI Time (s): {self.ai_timeout}", True, BLACK)
             self.screen.blit(timeout_text, (WINDOW_WIDTH//2 - 150, start_y + 30))
             
@@ -172,7 +169,6 @@ class Menu:
             self.draw_button(depth_plus, "+")
             self.draw_button(radius_minus, "-")
             self.draw_button(radius_plus, "+")
-            # Ajoutez ces lignes pour dessiner les boutons de timeout
             self.draw_button(timeout_minus, "-")
             self.draw_button(timeout_plus, "+")
             self.draw_button(back_button, "Back")
@@ -194,7 +190,6 @@ class Menu:
                         self.ai_radius -= 1
                     elif radius_plus.collidepoint(event.pos) and self.ai_radius < 5:
                         self.ai_radius += 1
-                    # Ajoutez ces lignes pour gérer les clics sur les boutons de timeout
                     elif timeout_minus.collidepoint(event.pos) and self.ai_timeout > 1:
                         self.ai_timeout -= 1
                     elif timeout_plus.collidepoint(event.pos) and self.ai_timeout < 120:
