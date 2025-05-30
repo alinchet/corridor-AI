@@ -279,35 +279,41 @@ class MinimaxAI:
             
             return min_eval
 
-    def _filter_wall_moves(self, moves, positions, player):
-        """Filter the list of possible moves (pawn moves and wall placements) so that only wall placements near the players (within a radius) are retained.
+    def _filter_wall_moves(
+        self,
+        moves: List[Union[Tuple[int, int], Tuple[int, int, str]]],
+        positions: Dict[int, Tuple[int, int]],
+        player: int
+    ) -> List[Union[Tuple[int, int], Tuple[int, int, str]]]:
+        """Filter the list of possible moves, keeping all pawn moves and selecting the top 20 wall placements
+        based on a heuristic (e.g., proximity to the opponent).
 
         Parameters:
-            moves (List) – A list of possible moves (each move is either a tuple (i,j) (pawn move) or a tuple (i,j,ori) (wall placement)).
-            positions (Dict[int, Tuple[int, int]]) – A dictionary mapping player numbers (1, 2) to their current (i,j) positions.
-            player (int) – The player (1 or 2) for whom the moves are being filtered.
+            moves (List) – A list of possible moves (pawn moves or wall placements).
+            positions (Dict[int, Tuple[int, int]]) – A dictionary mapping player numbers to their positions.
+            player (int) – The player for whom the moves are being filtered.
 
         Returns:
-            List – A filtered list of moves. Pawn moves (i.e. tuples (i,j)) are always retained; wall placements (tuples (i,j,ori)) are retained only if the wall's top-left cell (i,j) is within a radius (self.wall_radius) of any player's position.
-
-        Notes:
-            – This function is an optimization to reduce the number of wall placements evaluated (and thus speed up minimax).
+            List – A filtered list of moves containing all pawn moves and up to 20 wall placements.
         """
-        filtered_moves = []
+        pawn_moves = []
+        wall_moves = []
         
         for move in moves:
-            # Keep all moves that are not wall placements
-            if not isinstance(move, tuple) or len(move) != 3:
-                filtered_moves.append(move)
-                continue
-            
-            # Pour les placements de murs, ne garde que ceux proches des joueurs
-            i, j, _ = move
-            for p in [1, 2]:
-                pi, pj = positions[p]
-                if abs(i - pi) <= self.wall_radius and abs(j - pj) <= self.wall_radius:
-                    filtered_moves.append(move)
-                    break
+            if isinstance(move, tuple) and len(move) == 3: # Wall placement
+                wall_moves.append(move)
+            else: # Pawn move
+                pawn_moves.append(move)
+        
+        # Sort wall moves by proximity to the opponent's position (lower distance is better)
+        opponent_pos = positions[3 - player]
+        wall_moves.sort(key=lambda move: abs(move[0] - opponent_pos[0]) + abs(move[1] - opponent_pos[1]))
+        
+        # Keep only the top 20 wall moves
+        top_wall_moves = wall_moves[:20]
+        
+        # Combine pawn moves and the selected wall moves
+        filtered_moves = pawn_moves + top_wall_moves
         
         return filtered_moves
 
